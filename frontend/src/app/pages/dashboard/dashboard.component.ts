@@ -25,6 +25,7 @@ import { USER_TYPE_OPTIONS } from '../../models/auth.models';
 
         <div class="actions">
           <a routerLink="/wizard" class="btn btn-primary">Compléter mon profil</a>
+          <a routerLink="/ats" class="btn btn-secondary">Score CV / ATS</a>
           <a routerLink="/" class="btn btn-secondary">Accueil</a>
           <button type="button" class="btn btn-secondary" (click)="logout()">Déconnexion</button>
         </div>

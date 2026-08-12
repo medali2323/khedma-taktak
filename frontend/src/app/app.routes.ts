@@ -26,5 +26,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/wizard/wizard.component').then((m) => m.WizardComponent),
     canActivate: [authGuard],
   },
+  {
+    path: 'ats',
+    loadComponent: () => import('./pages/ats/ats.component').then((m) => m.AtsComponent),
+    canActivate: [authGuard],
+  },
   { path: '**', redirectTo: '' },
 ];

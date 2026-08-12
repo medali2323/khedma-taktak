@@ -102,6 +102,61 @@ export interface PublishStatus {
   previewUrl?: string;
 }
 
+export interface CvImportResult {
+  profile: UserProfile;
+  experiences: Experience[];
+  projects: Project[];
+  education: Education[];
+  skills: Skill[];
+  languages: Language[];
+  certifications: Certification[];
+  parserEngine?: 'ollama' | 'heuristic' | 'hybrid';
+  parserNote?: string;
+}
+
+export interface CvImportProgressEvent {
+  phase: 'extract' | 'parse' | 'complete' | 'error';
+  progress: number;
+  message: string;
+  section?: string;
+  found?: boolean;
+  count?: number;
+  result?: CvImportResult;
+}
+
+export interface CvExtractedPart {
+  section: string;
+  label: string;
+  count?: number;
+}
+
+export interface TradeCategory {
+  sector: string;
+  code: string;
+  labelFr: string;
+  labelEn: string;
+}
+
+export interface AtsAnalyzeRequest {
+  mode: 'OFFICE' | 'TRADES';
+  targetDomain: string;
+}
+
+export interface AtsAnalysisResult {
+  score: number;
+  mode: string;
+  targetDomain: string;
+  strengths: string[];
+  weaknesses: string[];
+  recommendations: string[];
+  suggestedKeywords: string[];
+}
+
+export interface AtsOptimizeResult {
+  analysis: AtsAnalysisResult;
+  optimizedProfile: UserProfile;
+}
+
 export type WizardStep =
   | 'profile'
   | 'experiences'

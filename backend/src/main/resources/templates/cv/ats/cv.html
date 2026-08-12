@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <title th:text="${portfolio.fullName} + ' - CV'">CV</title>
+    <style>
+        body { font-family: Arial, Helvetica, sans-serif; font-size: 11pt; color: #000; margin: 1.5cm; }
+        h1 { font-size: 18pt; margin: 0 0 4pt; }
+        h2 { font-size: 12pt; border-bottom: 1px solid #000; margin: 14pt 0 6pt; text-transform: uppercase; }
+        h3 { font-size: 11pt; margin: 0 0 2pt; }
+        p { margin: 0 0 6pt; }
+        .meta { color: #333; font-size: 10pt; }
+        ul { margin: 0 0 8pt; padding-left: 16pt; }
+        li { margin-bottom: 2pt; }
+    </style>
+</head>
+<body>
+<h1 th:text="${portfolio.fullName}">Name</h1>
+<p class="meta" th:text="${portfolio.title}">Title</p>
+<p th:text="${portfolio.contactEmail}"></p>
+<p th:text="${portfolio.contactPhone}"></p>
+<p th:text="${portfolio.contactLocation}"></p>
+<p th:text="${portfolio.summary}">Summary</p>
+
+<section th:if="${!portfolio.experiences.isEmpty()}">
+    <h2>Experience</h2>
+    <div th:each="exp : ${portfolio.experiences}">
+        <h3 th:text="${exp.role} + ' - ' + ${exp.company}">Role</h3>
+        <p class="meta" th:text="${exp.startDate} + ' - ' + ${exp.endDate}"></p>
+        <p th:text="${exp.description}"></p>
+        <ul th:if="${!exp.highlights.isEmpty()}">
+            <li th:each="hl : ${exp.highlights}" th:text="${hl}"></li>
+        </ul>
+    </div>
+</section>
+
+<section th:if="${!portfolio.educations.isEmpty()}">
+    <h2>Education</h2>
+    <div th:each="edu : ${portfolio.educations}">
+        <h3 th:text="${edu.degree} + ', ' + ${edu.institution}"></h3>
+        <p class="meta" th:text="${edu.startDate} + ' - ' + ${edu.endDate}"></p>
+    </div>
+</section>
+
+<section th:if="${!portfolio.skills.isEmpty()}">
+    <h2>Skills</h2>
+    <p>
+        <span th:each="skill, stat : ${portfolio.skills}">
+            <span th:text="${skill.name}"></span><span th:if="${!stat.last}">, </span>
+        </span>
+    </p>
+</section>
+
+<section th:if="${!portfolio.languages.isEmpty()}">
+    <h2>Languages</h2>
+    <ul>
+        <li th:each="lang : ${portfolio.languages}">
+            <span th:text="${lang.language}"></span>
+            <span th:text="' (' + ${lang.level} + ')'"></span>
+        </li>
+    </ul>
+</section>
+
+<section th:if="${!portfolio.certifications.isEmpty()}">
+    <h2>Certifications</h2>
+    <div th:each="cert : ${portfolio.certifications}">
+        <h3 th:text="${cert.name}"></h3>
+        <p class="meta" th:text="${cert.issuer}"></p>
+    </div>
+</section>
+</body>
+</html>

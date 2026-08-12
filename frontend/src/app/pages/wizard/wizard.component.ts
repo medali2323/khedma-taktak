@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectorRef, Component, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, inject, NgZone, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { RouterLink } from '@angular/router';
@@ -7,6 +7,9 @@ import { forkJoin } from 'rxjs';
 import { USER_TYPE_OPTIONS } from '../../models/auth.models';
 import {
   Certification,
+  CvExtractedPart,
+  CvImportProgressEvent,
+  CvImportResult,
   Education,
   Experience,
   Language,
@@ -68,6 +71,50 @@ const PROFILE_FIELD_LABELS: Record<ProfileField, string> = {
         <div class="wizard-step" [style.display]="isStepVisible('profile') ? 'block' : 'none'">
               <h2>Profil</h2>
               <p class="text-muted mb-2">Renseignez vos informations — enregistrez tout à la fin du parcours.</p>
+              <div class="cv-import-box mb-2">
+                <h3>Importer depuis un CV (PDF ou Word)</h3>
+                <p class="text-muted">Uploadez votre CV pour remplir automatiquement le profil, les expériences, compétences, etc.</p>
+                <div class="cv-import-actions">
+                  <input
+                    #cvFileInput
+                    type="file"
+                    accept="application/pdf,.pdf,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    hidden
+                    (change)="onCvFileSelected($event)"
+                  />
+                  <button type="button" class="btn btn-secondary" (click)="cvFileInput.click()" [disabled]="cvImporting">
+                    Choisir PDF ou Word
+                  </button>
+                  @if (cvImporting) {
+                    <div class="cv-import-progress" role="status">
+                      @if (cvImportPhase === 'analyse') {
+                        <div class="cv-import-status">Analyse : {{ cvImportProgress }}%</div>
+                        <div class="cv-progress-bar">
+                          <div class="cv-progress-fill" [style.width.%]="cvImportProgress"></div>
+                        </div>
+                        <div class="cv-import-sub">{{ cvImportStatus }}</div>
+                        @if (cvExtractedParts.length > 0) {
+                          <ul class="cv-extracted-list">
+                            @for (part of cvExtractedParts; track part.section) {
+                              <li class="cv-extracted-ok">
+                                {{ part.label }}@if (part.count !== undefined) { ({{ part.count }}) } ✓
+                              </li>
+                            }
+                          </ul>
+                        }
+                      } @else {
+                        <div class="cv-import-status">Remplissage : {{ cvFillProgress }}%</div>
+                        <div class="cv-progress-bar">
+                          <div class="cv-progress-fill cv-progress-fill-save" [style.width.%]="cvFillProgress"></div>
+                        </div>
+                        <div class="cv-import-sub">{{ cvImportStatus }}</div>
+                      }
+                    </div>
+                  } @else if (cvImportError) {
+                    <span class="cv-import-error" role="alert">{{ cvImportError }}</span>
+                  }
+                </div>
+              </div>
               <form [formGroup]="profileForm">
                 <div class="form-group">
                   <label for="userType">Type de profil</label>
@@ -410,6 +457,18 @@ const PROFILE_FIELD_LABELS: Record<ProfileField, string> = {
     .summary-block p { margin: 0.2rem 0; }
     .btn-link { background: none; border: none; padding: 0; color: var(--color-primary); cursor: pointer; font: inherit; text-decoration: underline; }
     .portfolio-loading { margin-bottom: 0.75rem; font-size: 0.875rem; }
+    .cv-import-box { border: 1px dashed var(--color-border); border-radius: var(--radius-md); padding: 1rem; background: #fafafa; }
+    .cv-import-box h3 { margin: 0 0 0.35rem; font-size: 1rem; }
+    .cv-import-actions { display: flex; flex-direction: column; gap: 0.75rem; margin-top: 0.75rem; }
+    .cv-import-progress { margin-top: 0.5rem; }
+    .cv-import-status { font-size: 0.9rem; margin-bottom: 0.35rem; }
+    .cv-import-sub { font-size: 0.85rem; color: var(--color-muted, #6b7280); margin-top: 0.35rem; }
+    .cv-progress-bar { height: 6px; background: var(--color-border); border-radius: 3px; overflow: hidden; }
+    .cv-progress-fill { height: 100%; background: var(--color-primary); transition: width 0.25s; }
+    .cv-progress-fill-save { background: #059669; }
+    .cv-extracted-list { list-style: none; padding: 0; margin: 0.5rem 0 0; display: flex; flex-wrap: wrap; gap: 0.35rem; }
+    .cv-extracted-ok { background: #ecfdf5; color: #065f46; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; }
+    .cv-import-error { color: #b91c1c; font-size: 0.875rem; }
   `],
 })
 export class WizardComponent implements OnInit {
@@ -417,6 +476,7 @@ export class WizardComponent implements OnInit {
   private readonly portfolio = inject(PortfolioService);
   private readonly auth = inject(AuthService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly ngZone = inject(NgZone);
 
   readonly steps = WIZARD_STEPS;
   readonly userTypeOptions = USER_TYPE_OPTIONS;
@@ -426,6 +486,13 @@ export class WizardComponent implements OnInit {
   message = '';
   error = '';
   publishStatus: PublishStatus | null = null;
+  cvImporting = false;
+  cvImportPhase: 'analyse' | 'fill' = 'analyse';
+  cvImportProgress = 0;
+  cvFillProgress = 0;
+  cvImportStatus = '';
+  cvImportError = '';
+  cvExtractedParts: CvExtractedPart[] = [];
 
   profileForm = this.fb.group({
     userType: ['CANDIDATE'],
@@ -626,6 +693,191 @@ export class WizardComponent implements OnInit {
     this.profileForm.controls.phone.setValue(digits, { emitEvent: false });
     input.value = digits;
   }
+
+  async onCvFileSelected(event: Event): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) {
+      return;
+    }
+    const lower = file.name.toLowerCase();
+    if (!lower.endsWith('.pdf') && !lower.endsWith('.docx')) {
+      this.cvImportError = 'Veuillez sélectionner un fichier PDF ou Word (.docx).';
+      return;
+    }
+
+    this.cvImporting = true;
+    this.cvImportPhase = 'analyse';
+    this.cvImportProgress = 1;
+    this.cvFillProgress = 0;
+    this.cvImportStatus = 'Envoi du document...';
+    this.cvImportError = '';
+    this.cvExtractedParts = [];
+    this.clearMessages();
+    this.cdr.detectChanges();
+
+    const uploadTimer = setInterval(() => {
+      if (this.cvImporting && this.cvImportPhase === 'analyse' && this.cvImportProgress < 8) {
+        this.ngZone.run(() => {
+          this.cvImportProgress += 1;
+          this.cdr.detectChanges();
+        });
+      }
+    }, 250);
+
+    try {
+      const imported = await this.portfolio.importCvWithProgress(
+        file,
+        (progressEvent) => this.handleCvImportProgress(progressEvent),
+      );
+
+      this.cvImportStatus = 'Sections détectées, remplissage des formulaires...';
+      await this.delay(400);
+      this.applyImportedToForms(imported);
+
+      const expCount = imported.experiences?.length ?? 0;
+      const skillCount = imported.skills?.length ?? 0;
+      const eduCount = imported.education?.length ?? 0;
+      const engine = imported.parserEngine === 'hybrid'
+        ? 'IA (profil/exp.) + structure (compétences/langues)'
+        : imported.parserEngine === 'ollama'
+          ? 'Ollama (IA)'
+          : 'parser classique';
+      this.message = imported.parserNote
+        ? `${imported.parserNote} Import via ${engine} : ${expCount} exp., ${skillCount} comp., ${eduCount} formation(s).`
+        : `CV importé via ${engine} : ${expCount} exp., ${skillCount} comp., ${eduCount} formation(s). Vérifiez chaque étape puis enregistrez au récapitulatif.`;
+    } catch (err) {
+      this.cvImportError = this.portfolio.formatCvImportError(err);
+    } finally {
+      clearInterval(uploadTimer);
+      this.cvImporting = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  private handleCvImportProgress(event: CvImportProgressEvent): void {
+    this.ngZone.run(() => {
+      if (event.phase === 'extract' || event.phase === 'parse') {
+        this.cvImportPhase = 'analyse';
+        if (event.progress > this.cvImportProgress) {
+          this.cvImportProgress = event.progress;
+        }
+        this.cvImportStatus = event.message;
+        if (event.section && event.found === true) {
+          this.upsertExtractedPart(event.section, event.count);
+        }
+        this.cdr.detectChanges();
+        return;
+      }
+      if (event.phase === 'complete') {
+        this.cvImportPhase = 'analyse';
+        this.cvImportProgress = 100;
+        this.cvImportStatus = event.message || 'Analyse terminée';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  private upsertExtractedPart(section: string, count?: number): void {
+    const label = this.cvSectionLabels[section] ?? section;
+    const existing = this.cvExtractedParts.find((part) => part.section === section);
+    if (existing) {
+      existing.count = count;
+      return;
+    }
+    this.cvExtractedParts.push({ section, label, count });
+  }
+
+  private applyImportedToForms(imported: CvImportResult): void {
+    this.cvImportPhase = 'fill';
+    this.cvFillProgress = 0;
+
+    const sections: Array<{ label: string; hasData: boolean; apply: () => void }> = [
+      {
+        label: 'Profil...',
+        hasData: this.hasImportedProfile(imported.profile),
+        apply: () => {
+          this.applyProfile(imported.profile);
+          this.profileForm.controls.phone.setValue(this.normalizePhone(imported.profile.phone));
+        },
+      },
+      {
+        label: 'Expériences...',
+        hasData: (imported.experiences?.length ?? 0) > 0,
+        apply: () => this.setFormArray(this.experiencesForm.controls.items, imported.experiences ?? [], newExperienceGroup),
+      },
+      {
+        label: 'Projets...',
+        hasData: (imported.projects?.length ?? 0) > 0,
+        apply: () => this.setFormArray(this.projectsForm.controls.items, imported.projects ?? [], newProjectGroup),
+      },
+      {
+        label: 'Formation...',
+        hasData: (imported.education?.length ?? 0) > 0,
+        apply: () => this.setFormArray(this.educationForm.controls.items, imported.education ?? [], newEducationGroup),
+      },
+      {
+        label: 'Compétences...',
+        hasData: (imported.skills?.length ?? 0) > 0,
+        apply: () => this.setFormArray(this.skillsForm.controls.items, imported.skills ?? [], newSkillGroup),
+      },
+      {
+        label: 'Langues...',
+        hasData: (imported.languages?.length ?? 0) > 0,
+        apply: () => this.setFormArray(this.languagesForm.controls.items, imported.languages ?? [], newLanguageGroup),
+      },
+      {
+        label: 'Certifications...',
+        hasData: (imported.certifications?.length ?? 0) > 0,
+        apply: () => this.setFormArray(this.certificationsForm.controls.items, imported.certifications ?? [], newCertificationGroup),
+      },
+    ];
+
+    const toApply = sections.filter((section) => section.hasData);
+    if (toApply.length === 0) {
+      this.cvFillProgress = 100;
+      this.cvImportStatus = 'Aucune section à remplir.';
+      return;
+    }
+
+    toApply.forEach((section, index) => {
+      this.cvFillProgress = Math.round(((index + 1) / toApply.length) * 100);
+      this.cvImportStatus = `Remplissage : ${section.label}`;
+      section.apply();
+    });
+    this.cvImportStatus = 'Formulaires remplis — vérifiez chaque étape puis enregistrez au récapitulatif.';
+    this.cdr.detectChanges();
+  }
+
+  private hasImportedProfile(profile: CvImportResult['profile']): boolean {
+    if (!profile) {
+      return false;
+    }
+    return [
+      profile.firstName,
+      profile.lastName,
+      profile.email,
+      profile.title,
+      profile.summary,
+      profile.phone,
+      profile.location,
+    ].some((value) => value?.trim());
+  }
+
+  private delay(ms: number): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private readonly cvSectionLabels: Record<string, string> = {
+    profile: 'Profil',
+    experiences: 'Expériences',
+    projects: 'Projets',
+    education: 'Formation',
+    skills: 'Compétences',
+    languages: 'Langues',
+    certifications: 'Certifications',
+  };
 
   openPreview(): void {
     this.portfolio.getPreviewHtml().subscribe({

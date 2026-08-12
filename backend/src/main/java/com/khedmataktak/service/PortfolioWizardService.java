@@ -20,6 +20,7 @@ import com.khedmataktak.dto.PublishRequest;
 import com.khedmataktak.dto.SkillRequest;
 import com.khedmataktak.dto.SkillResponse;
 import com.khedmataktak.dto.wizard.WizardDtos.CertificationDto;
+import com.khedmataktak.dto.wizard.WizardDtos.CvImportResultDto;
 import com.khedmataktak.dto.wizard.WizardDtos.EducationDto;
 import com.khedmataktak.dto.wizard.WizardDtos.ExperienceDto;
 import com.khedmataktak.dto.wizard.WizardDtos.LanguageDto;
@@ -327,6 +328,36 @@ public class PortfolioWizardService {
     public PublishStatusDto unpublish(UUID userId) {
         ProfileResponse profile = profileService.togglePublish(userId, new PublishRequest(false));
         return toPublishStatus(profile);
+    }
+
+    @Transactional
+    public PortfolioDto importCvAndSave(UUID userId, CvImportResultDto imported) {
+        applyImportedCv(userId, imported);
+        return getPortfolio(userId);
+    }
+
+    private void applyImportedCv(UUID userId, CvImportResultDto imported) {
+        if (imported.profile() != null) {
+            saveProfile(userId, imported.profile());
+        }
+        if (imported.experiences() != null && !imported.experiences().isEmpty()) {
+            saveExperiences(userId, imported.experiences());
+        }
+        if (imported.projects() != null && !imported.projects().isEmpty()) {
+            saveProjects(userId, imported.projects());
+        }
+        if (imported.education() != null && !imported.education().isEmpty()) {
+            saveEducation(userId, imported.education());
+        }
+        if (imported.skills() != null && !imported.skills().isEmpty()) {
+            saveSkills(userId, imported.skills());
+        }
+        if (imported.languages() != null && !imported.languages().isEmpty()) {
+            saveLanguages(userId, imported.languages());
+        }
+        if (imported.certifications() != null && !imported.certifications().isEmpty()) {
+            saveCertifications(userId, imported.certifications());
+        }
     }
 
     private PublishStatusDto toPublishStatus(ProfileResponse profile) {
