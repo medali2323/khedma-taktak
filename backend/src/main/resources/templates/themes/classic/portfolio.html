@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${portfolio.ogTitle}">Portfolio</title>
+    <meta name="description" th:content="${portfolio.metaDescription}"/>
+    <link rel="canonical" th:href="${portfolio.canonicalUrl}"/>
+    <meta property="og:type" content="website"/>
+    <meta property="og:title" th:content="${portfolio.ogTitle}"/>
+    <meta property="og:description" th:content="${portfolio.ogDescription}"/>
+    <meta property="og:url" th:content="${portfolio.canonicalUrl}"/>
+    <meta property="og:image" th:content="${portfolio.ogImage}" th:if="${portfolio.ogImage != null}"/>
+    <meta name="twitter:card" content="summary_large_image"/>
+    <meta name="twitter:title" th:content="${portfolio.ogTitle}"/>
+    <meta name="twitter:description" th:content="${portfolio.ogDescription}"/>
+    <style>
+        body { font-family: Georgia, serif; max-width: 900px; margin: 0 auto; padding: 2rem; color: #222; line-height: 1.6; }
+        header { text-align: center; margin-bottom: 2.5rem; }
+        header img { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; }
+        h1 { margin-bottom: 0.25rem; }
+        .subtitle { color: #555; font-size: 1.1rem; }
+        h2 { border-bottom: 2px solid #333; padding-bottom: 0.3rem; margin-top: 2rem; }
+        .item { margin-bottom: 1.5rem; }
+        .meta { color: #666; font-size: 0.95rem; }
+        ul { padding-left: 1.2rem; }
+        a { color: #1a5276; }
+    </style>
+</head>
+<body>
+<header>
+    <img th:if="${portfolio.photoUrl != null}" th:src="${portfolio.photoUrl}" th:alt="${portfolio.fullName}"/>
+    <h1 th:text="${portfolio.fullName}">Name</h1>
+    <p class="subtitle" th:text="${portfolio.title}">Title</p>
+    <p th:text="${portfolio.summary}">Summary</p>
+    <p class="meta">
+        <span th:if="${portfolio.contactEmail != null}" th:text="${portfolio.contactEmail}"></span>
+        <span th:if="${portfolio.contactPhone != null}" th:text="' | ' + ${portfolio.contactPhone}"></span>
+        <span th:if="${portfolio.contactLocation != null and !portfolio.contactLocation.isEmpty()}"
+              th:text="' | ' + ${portfolio.contactLocation}"></span>
+    </p>
+</header>
+
+<section th:if="${!portfolio.experiences.isEmpty()}">
+    <h2>Experience</h2>
+    <div class="item" th:each="exp : ${portfolio.experiences}">
+        <h3 th:text="${exp.role}">Role</h3>
+        <p class="meta">
+            <span th:text="${exp.company}">Company</span>
+            <span th:text="' | ' + ${exp.startDate} + ' - ' + ${exp.endDate}"></span>
+            <span th:if="${exp.location != null and !exp.location.isEmpty()}" th:text="' | ' + ${exp.location}"></span>
+        </p>
+        <p th:text="${exp.description}">Description</p>
+        <ul th:if="${!exp.highlights.isEmpty()}">
+            <li th:each="hl : ${exp.highlights}" th:text="${hl}">Highlight</li>
+        </ul>
+    </div>
+</section>
+
+<section th:if="${!portfolio.projects.isEmpty()}">
+    <h2>Projects</h2>
+    <div class="item" th:each="proj : ${portfolio.projects}">
+        <h3 th:text="${proj.title}">Project</h3>
+        <p th:text="${proj.description}">Description</p>
+        <p th:if="${proj.url != null}"><a th:href="${proj.url}" th:text="${proj.url}">URL</a></p>
+        <ul th:if="${!proj.technologies.isEmpty()}">
+            <li th:each="tech : ${proj.technologies}" th:text="${tech}">Tech</li>
+        </ul>
+    </div>
+</section>
+
+<section th:if="${!portfolio.educations.isEmpty()}">
+    <h2>Education</h2>
+    <div class="item" th:each="edu : ${portfolio.educations}">
+        <h3 th:text="${edu.degree}">Degree</h3>
+        <p class="meta">
+            <span th:text="${edu.institution}">Institution</span>
+            <span th:if="${edu.field != null and !edu.field.isEmpty()}" th:text="' | ' + ${edu.field}"></span>
+        </p>
+    </div>
+</section>
+
+<section th:if="${!portfolio.skills.isEmpty()}">
+    <h2>Skills</h2>
+    <ul>
+        <li th:each="skill : ${portfolio.skills}">
+            <span th:text="${skill.name}">Skill</span>
+            <span th:if="${skill.category != null and !skill.category.isEmpty()}" th:text="' (' + ${skill.category} + ')'"></span>
+        </li>
+    </ul>
+</section>
+
+<section th:if="${!portfolio.languages.isEmpty()}">
+    <h2>Languages</h2>
+    <ul>
+        <li th:each="lang : ${portfolio.languages}">
+            <span th:text="${lang.language}">Language</span>
+            <span th:text="' - ' + ${lang.level}"></span>
+        </li>
+    </ul>
+</section>
+
+<section th:if="${!portfolio.certifications.isEmpty()}">
+    <h2>Certifications</h2>
+    <div class="item" th:each="cert : ${portfolio.certifications}">
+        <h3 th:text="${cert.name}">Certification</h3>
+        <p class="meta" th:text="${cert.issuer}">Issuer</p>
+    </div>
+</section>
+</body>
+</html>

@@ -32,19 +32,22 @@ public class AuthService {
     private final JwtService jwtService;
     private final JwtProperties jwtProperties;
     private final AuthenticationManager authenticationManager;
+    private final ProfileService profileService;
 
     public AuthService(UserRepository userRepository,
                        RefreshTokenRepository refreshTokenRepository,
                        PasswordEncoder passwordEncoder,
                        JwtService jwtService,
                        JwtProperties jwtProperties,
-                       AuthenticationManager authenticationManager) {
+                       AuthenticationManager authenticationManager,
+                       ProfileService profileService) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.jwtProperties = jwtProperties;
         this.authenticationManager = authenticationManager;
+        this.profileService = profileService;
     }
 
     @Transactional
@@ -60,6 +63,8 @@ public class AuthService {
         user.setLastName(request.lastName().trim());
         user.setUserType(request.resolvedUserType());
         userRepository.save(user);
+
+        profileService.createDefaultProfile(user, request.firstName(), request.lastName(), request.resolvedUserType());
 
         return issueTokens(user);
     }

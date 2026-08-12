@@ -21,5 +21,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/dashboard/dashboard.component').then((m) => m.DashboardComponent),
     canActivate: [authGuard],
   },
+  {
+    path: 'wizard',
+    loadComponent: () => import('./pages/wizard/wizard.component').then((m) => m.WizardComponent),
+    canActivate: [authGuard],
+  },
   { path: '**', redirectTo: '' },
 ];
