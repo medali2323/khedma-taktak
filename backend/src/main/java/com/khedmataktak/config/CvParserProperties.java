@@ -2,82 +2,77 @@ package com.khedmataktak.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+/**
+ * External CV extraction API (Python service). Backend only proxies uploads — no local parsing.
+ */
 @ConfigurationProperties(prefix = "app.cv-parser")
 public class CvParserProperties {
 
-    private Ollama ollama = new Ollama();
+    /** When false, import endpoints reject with a clear error. */
+    private boolean enabled = true;
 
-    public Ollama getOllama() {
-        return ollama;
+    /** Base URL of the CV extraction service, e.g. http://localhost:8000 */
+    private String baseUrl = "http://localhost:8000";
+
+    /** Path for multipart CV import, e.g. /v1/cv/import */
+    private String importPath = "/v1/cv/import";
+
+    /** Optional health path for readiness checks, e.g. /health */
+    private String healthPath = "/health";
+
+    private int timeoutSeconds = 300;
+
+    public boolean isEnabled() {
+        return enabled;
     }
 
-    public void setOllama(Ollama ollama) {
-        this.ollama = ollama;
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
     }
 
-    public static class Ollama {
-        private boolean enabled = true;
-        private String baseUrl = "http://localhost:11434";
-        private String model = "llama3.2:3b";
-        private int timeoutSeconds = 120;
-        private int maxTextLength = 14_000;
-        private double temperature = 0.0;
-        private int seed = 42;
+    public String getBaseUrl() {
+        return baseUrl;
+    }
 
-        public boolean isEnabled() {
-            return enabled;
-        }
+    public void setBaseUrl(String baseUrl) {
+        this.baseUrl = baseUrl;
+    }
 
-        public void setEnabled(boolean enabled) {
-            this.enabled = enabled;
-        }
+    public String getImportPath() {
+        return importPath;
+    }
 
-        public String getBaseUrl() {
-            return baseUrl;
-        }
+    public void setImportPath(String importPath) {
+        this.importPath = importPath;
+    }
 
-        public void setBaseUrl(String baseUrl) {
-            this.baseUrl = baseUrl;
-        }
+    public String getHealthPath() {
+        return healthPath;
+    }
 
-        public String getModel() {
-            return model;
-        }
+    public void setHealthPath(String healthPath) {
+        this.healthPath = healthPath;
+    }
 
-        public void setModel(String model) {
-            this.model = model;
-        }
+    public int getTimeoutSeconds() {
+        return timeoutSeconds;
+    }
 
-        public int getTimeoutSeconds() {
-            return timeoutSeconds;
-        }
+    public void setTimeoutSeconds(int timeoutSeconds) {
+        this.timeoutSeconds = timeoutSeconds;
+    }
 
-        public void setTimeoutSeconds(int timeoutSeconds) {
-            this.timeoutSeconds = timeoutSeconds;
-        }
+    public String importUrl() {
+        return join(baseUrl, importPath);
+    }
 
-        public int getMaxTextLength() {
-            return maxTextLength;
-        }
+    public String healthUrl() {
+        return join(baseUrl, healthPath);
+    }
 
-        public void setMaxTextLength(int maxTextLength) {
-            this.maxTextLength = maxTextLength;
-        }
-
-        public double getTemperature() {
-            return temperature;
-        }
-
-        public void setTemperature(double temperature) {
-            this.temperature = temperature;
-        }
-
-        public int getSeed() {
-            return seed;
-        }
-
-        public void setSeed(int seed) {
-            this.seed = seed;
-        }
+    private static String join(String base, String path) {
+        String b = base == null ? "" : base.replaceAll("/+$", "");
+        String p = path == null || path.isBlank() ? "" : (path.startsWith("/") ? path : "/" + path);
+        return b + p;
     }
 }

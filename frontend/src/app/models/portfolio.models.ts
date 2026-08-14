@@ -110,7 +110,7 @@ export interface CvImportResult {
   skills: Skill[];
   languages: Language[];
   certifications: Certification[];
-  parserEngine?: 'ollama' | 'heuristic' | 'hybrid';
+  parserEngine?: string;
   parserNote?: string;
 }
 

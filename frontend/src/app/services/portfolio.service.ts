@@ -152,11 +152,9 @@ export class PortfolioService {
     try {
       const imported = await firstValueFrom(this.importCvFile(file));
       this.emitExtractedSections(imported, onProgress);
-      const engineLabel = imported.parserEngine === 'hybrid'
-        ? 'Analyse terminée (IA + structure)'
-        : imported.parserEngine === 'ollama'
-          ? 'Analyse terminée (Ollama IA)'
-          : 'Analyse terminée (parser classique)';
+      const engineLabel = imported.parserEngine
+        ? `Analyse terminée (${imported.parserEngine})`
+        : 'Analyse terminée (API CV)';
       onProgress({ phase: 'complete', progress: 100, message: engineLabel, result: imported });
       return imported;
     } finally {

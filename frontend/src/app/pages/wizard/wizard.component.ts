@@ -739,11 +739,7 @@ export class WizardComponent implements OnInit {
       const expCount = imported.experiences?.length ?? 0;
       const skillCount = imported.skills?.length ?? 0;
       const eduCount = imported.education?.length ?? 0;
-      const engine = imported.parserEngine === 'hybrid'
-        ? 'IA (profil/exp.) + structure (compétences/langues)'
-        : imported.parserEngine === 'ollama'
-          ? 'Ollama (IA)'
-          : 'parser classique';
+      const engine = imported.parserEngine || 'API CV';
       this.message = imported.parserNote
         ? `${imported.parserNote} Import via ${engine} : ${expCount} exp., ${skillCount} comp., ${eduCount} formation(s).`
         : `CV importé via ${engine} : ${expCount} exp., ${skillCount} comp., ${eduCount} formation(s). Vérifiez chaque étape puis enregistrez au récapitulatif.`;
